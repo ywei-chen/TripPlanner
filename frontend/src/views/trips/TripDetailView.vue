@@ -24,18 +24,21 @@
         <template v-for="day in allDays" :key="day.dayNumber">
           <div class="day-block">
             <div class="day-header">
-              <span class="day-badge">第 {{ day.dayNumber }} 天</span>
-              <span v-if="getDayDate(day.dayNumber)" class="day-date">
-                {{ getDayDate(day.dayNumber) }}
-              </span>
+              <div class="day-header-left">
+                <span v-if="getDayDate(day.dayNumber)" class="day-date-main">{{ getDayDate(day.dayNumber) }}</span>
+                <span class="day-badge">第 {{ day.dayNumber }} 天</span>
+              </div>
             </div>
 
             <div
               class="day-body"
-              :class="{ 'drag-over': dragOverDay === day.dayNumber }"
-              @dragover.prevent="dragOverDay = day.dayNumber"
-              @dragleave.self="dragOverDay = null"
-              @drop.prevent="onDrop(day.dayNumber)"
+              :class="{
+                'drag-over': dragOverDay === day.dayNumber,
+                'drag-over-attr': dragOverAttrDay === day.dayNumber
+              }"
+              @dragover.prevent="onDragOverDay($event, day.dayNumber)"
+              @dragleave.self="onDragLeaveDay"
+              @drop.prevent="onDropToDay(day.dayNumber)"
             >
               <template v-for="(item, idx) in day.items" :key="item.id">
                 <div
@@ -85,13 +88,21 @@
       <!-- 加入行程浮窗 -->
       <Transition name="popup">
         <div v-if="pendingAttr" class="add-popup">
-          <div class="popup-box">
+          <div
+            class="popup-box"
+            :class="{ 'popup-dragging': isDraggingAttr }"
+            draggable="true"
+            @dragstart="onAttrDragStart"
+            @dragend="onAttrDragEnd"
+          >
             <button class="popup-close" @click="pendingAttr = null">✕</button>
             <p class="popup-name">{{ pendingAttr.name }}</p>
             <p v-if="pendingAttr.city" class="popup-sub">
               {{ [pendingAttr.city, pendingAttr.country].filter(Boolean).join(' · ') }}
             </p>
-            <p class="popup-hint">加入哪一天？</p>
+            <p class="popup-hint">
+              <span class="drag-hint">☰ 拖曳到左側天數區塊，或點擊加入：</span>
+            </p>
             <div class="popup-days">
               <button
                 v-for="d in allDays"
@@ -190,6 +201,8 @@ const emptyDays = ref<Set<number>>(new Set())
 const draggingItem = ref<TripItem | null>(null)
 const draggingItemId = ref<string | null>(null)
 const dragOverDay = ref<number | null>(null)
+const isDraggingAttr = ref(false)
+const dragOverAttrDay = ref<number | null>(null)
 const travelTimes = ref<Record<string, string>>({})
 
 // ── 行程資料 ──────────────────────────────────────────────────────────────────
@@ -285,12 +298,18 @@ async function addToDay(attr: Attraction, dayNumber: number) {
   addingDay.value = dayNumber
   const targetDayItems = allDays.value.find(d => d.dayNumber === dayNumber)?.items ?? []
   try {
-    await tripsStore.addItem(tripId, {
+    const newItem = await tripsStore.addItem(tripId, {
       attractionId: attr.id,
       dayNumber,
       sortOrder: targetDayItems.length + 1
     })
-    // Remove empty day placeholder if now has items
+    // 後端 AddItemAsync 不 Include Attraction，立刻補上座標讓車程可計算
+    const stored = tripsStore.currentTrip?.items.find(i => i.id === newItem.id)
+    if (stored) {
+      stored.attractionLatitude = attr.latitude != null ? Number(attr.latitude) : undefined
+      stored.attractionLongitude = attr.longitude != null ? Number(attr.longitude) : undefined
+      stored.attractionName = attr.name
+    }
     if (emptyDays.value.has(dayNumber)) {
       const next = new Set(emptyDays.value)
       next.delete(dayNumber)
@@ -305,7 +324,18 @@ async function addToDay(attr: Attraction, dayNumber: number) {
   }
 }
 
-// ── 拖曳排序 ──────────────────────────────────────────────────────────────────
+// ── 景點卡片拖曳（從地圖到天數區塊）──────────────────────────────────────────
+function onAttrDragStart(e: DragEvent) {
+  isDraggingAttr.value = true
+  e.dataTransfer?.setData('type', 'attraction')
+}
+
+function onAttrDragEnd() {
+  isDraggingAttr.value = false
+  dragOverAttrDay.value = null
+}
+
+// ── 行程項目拖曳排序 ───────────────────────────────────────────────────────────
 function onDragStart(item: TripItem) {
   draggingItem.value = item
   draggingItemId.value = item.id
@@ -317,8 +347,33 @@ function onDragEnd() {
   dragOverDay.value = null
 }
 
-async function onDrop(targetDay: number) {
+// ── 天數區塊 dragover / dragleave ─────────────────────────────────────────────
+function onDragOverDay(e: DragEvent, dayNumber: number) {
+  if (isDraggingAttr.value || e.dataTransfer?.types.includes('type')) {
+    dragOverAttrDay.value = dayNumber
+    dragOverDay.value = null
+  } else {
+    dragOverDay.value = dayNumber
+    dragOverAttrDay.value = null
+  }
+}
+
+function onDragLeaveDay() {
   dragOverDay.value = null
+  dragOverAttrDay.value = null
+}
+
+// ── 統一 drop 處理 ────────────────────────────────────────────────────────────
+async function onDropToDay(targetDay: number) {
+  dragOverDay.value = null
+  dragOverAttrDay.value = null
+
+  if (isDraggingAttr.value && pendingAttr.value) {
+    isDraggingAttr.value = false
+    await addToDay(pendingAttr.value, targetDay)
+    return
+  }
+
   const item = draggingItem.value
   if (!item || item.dayNumber === targetDay) return
 
@@ -606,22 +661,28 @@ onUnmounted(() => {
 .day-header {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  padding: .4rem .625rem;
+  justify-content: space-between;
+  padding: .5rem .625rem;
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-200);
 }
-.day-badge {
-  font-size: .75rem;
+.day-header-left {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.day-date-main {
+  font-size: .875rem;
   font-weight: 600;
+  color: var(--gray-800);
+}
+.day-badge {
+  font-size: .7rem;
+  font-weight: 500;
   color: var(--primary);
   background: #eff6ff;
-  padding: .15rem .45rem;
+  padding: .1rem .4rem;
   border-radius: 4px;
-}
-.day-date {
-  font-size: .75rem;
-  color: var(--gray-500);
 }
 
 .day-body {
@@ -635,6 +696,11 @@ onUnmounted(() => {
 .day-body.drag-over {
   background: #eff6ff;
   outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+}
+.day-body.drag-over-attr {
+  background: #f0fdf4;
+  outline: 2px dashed #16a34a;
   outline-offset: -2px;
 }
 .day-empty {
@@ -794,7 +860,23 @@ onUnmounted(() => {
 .popup-hint {
   font-size: .75rem;
   color: var(--gray-500);
-  margin: .625rem 0 .375rem;
+  margin: .5rem 0 .375rem;
+}
+.drag-hint {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  cursor: grab;
+}
+.popup-box {
+  cursor: default;
+}
+.popup-box[draggable="true"] {
+  cursor: grab;
+}
+.popup-box.popup-dragging {
+  opacity: .6;
+  cursor: grabbing;
 }
 .popup-days {
   display: flex;

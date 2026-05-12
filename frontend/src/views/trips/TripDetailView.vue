@@ -21,6 +21,38 @@
         </div>
       </div>
 
+      <!-- 從地圖點選的待加入景點 -->
+      <div v-if="pendingAttr" class="pending-bar">
+        <div
+          class="pending-chip"
+          draggable="true"
+          @dragstart="onAttrDragStart"
+          @dragend="onAttrDragEnd"
+        >
+          <span class="pending-icon">📍</span>
+          <div class="pending-info">
+            <span class="pending-name">{{ pendingAttr.name }}</span>
+            <span v-if="pendingAttr.city" class="pending-city">{{ pendingAttr.city }}</span>
+          </div>
+          <span class="pending-drag-hint">拖至下方天數</span>
+        </div>
+        <div class="pending-day-btns">
+          <button
+            v-for="d in allDays"
+            :key="d.dayNumber"
+            class="btn btn-xs btn-outline"
+            :disabled="addingDay !== null"
+            @click="addToDay(pendingAttr!, d.dayNumber)"
+          >第{{ d.dayNumber }}天</button>
+          <button
+            class="btn btn-xs btn-primary"
+            :disabled="addingDay !== null"
+            @click="addToDay(pendingAttr!, maxDay + 1)"
+          >+新增天</button>
+          <button class="pending-dismiss" @click="pendingAttr = null">✕</button>
+        </div>
+      </div>
+
       <div class="days-scroll">
         <div v-if="allDays.length === 0" class="no-days">
           <p>點擊右側地圖上的景點，即可加入行程</p>
@@ -87,47 +119,21 @@
 
     <!-- 右側：Google Maps -->
     <div class="map-panel">
+      <!-- 地址搜尋列 -->
+      <div class="map-search-bar">
+        <input
+          v-model="mapSearchText"
+          class="map-search-input"
+          placeholder="🔍 搜尋地址或地點..."
+          @keyup.enter="doMapSearch"
+        />
+        <button class="map-search-btn" :disabled="mapSearching" @click="doMapSearch">
+          {{ mapSearching ? '定位中' : '前往' }}
+        </button>
+      </div>
+
       <div v-if="mapError" class="map-err">⚠️ {{ mapError }}</div>
       <div ref="mapEl" class="map-container" />
-
-      <!-- 加入行程浮窗 -->
-      <Transition name="popup">
-        <div v-if="pendingAttr" class="add-popup">
-          <div
-            class="popup-box"
-            :class="{ 'popup-dragging': isDraggingAttr }"
-            draggable="true"
-            @dragstart="onAttrDragStart"
-            @dragend="onAttrDragEnd"
-          >
-            <button class="popup-close" @click="pendingAttr = null">✕</button>
-            <p class="popup-name">{{ pendingAttr.name }}</p>
-            <p v-if="pendingAttr.city" class="popup-sub">
-              {{ [pendingAttr.city, pendingAttr.country].filter(Boolean).join(' · ') }}
-            </p>
-            <p class="popup-hint">
-              <span class="drag-hint">☰ 拖曳到左側天數區塊，或點擊加入：</span>
-            </p>
-            <div class="popup-days">
-              <button
-                v-for="d in allDays"
-                :key="d.dayNumber"
-                class="btn btn-sm btn-outline"
-                :disabled="addingDay !== null"
-                @click="addToDay(pendingAttr!, d.dayNumber)"
-              >第 {{ d.dayNumber }} 天</button>
-              <button
-                class="btn btn-sm btn-primary"
-                :disabled="addingDay !== null"
-                @click="addToDay(pendingAttr!, maxDay + 1)"
-              >
-                <span v-if="addingDay === maxDay + 1">加入中...</span>
-                <span v-else>+ 第 {{ maxDay + 1 }} 天（新增）</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
     </div>
   </div>
 
@@ -330,10 +336,33 @@ async function addToDay(attr: Attraction, dayNumber: number) {
   }
 }
 
-// ── 景點卡片拖曳（從地圖到天數區塊）──────────────────────────────────────────
+// ── 地圖地址搜尋 ──────────────────────────────────────────────────────────────
+const mapSearchText = ref('')
+const mapSearching = ref(false)
+
+async function doMapSearch() {
+  const q = mapSearchText.value.trim()
+  if (!q || !map) return
+  mapSearching.value = true
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'zh-TW,zh;q=0.9' } }
+    )
+    const data = await res.json()
+    if (data.length > 0) {
+      map.panTo({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
+      map.setZoom(13)
+    }
+  } catch { /* ignore */ } finally {
+    mapSearching.value = false
+  }
+}
+
+// ── 景點卡片拖曳（pending-bar → 天數區塊，同在左側面板）────────────────────
 function onAttrDragStart(e: DragEvent) {
   isDraggingAttr.value = true
-  e.dataTransfer?.setData('type', 'attraction')
+  e.dataTransfer?.setData('drag-type', 'attraction')
 }
 
 function onAttrDragEnd() {
@@ -355,7 +384,7 @@ function onDragEnd() {
 
 // ── 天數區塊 dragover / dragleave ─────────────────────────────────────────────
 function onDragOverDay(e: DragEvent, dayNumber: number) {
-  if (isDraggingAttr.value || e.dataTransfer?.types.includes('type')) {
+  if (isDraggingAttr.value || e.dataTransfer?.types.includes('drag-type')) {
     dragOverAttrDay.value = dayNumber
     dragOverDay.value = null
   } else {
@@ -825,15 +854,88 @@ onUnmounted(() => {
   background: #eff6ff;
 }
 
+/* ── 待加入景點列（左側面板）── */
+.pending-bar {
+  border-bottom: 1px solid var(--gray-200);
+  background: #f0fdf4;
+  padding: .5rem .625rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .375rem;
+}
+.pending-chip {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff;
+  border: 2px solid #16a34a;
+  border-radius: 8px;
+  padding: .375rem .625rem;
+  cursor: grab;
+  user-select: none;
+}
+.pending-chip:active { cursor: grabbing; opacity: .75; }
+.pending-icon { font-size: 1rem; flex-shrink: 0; }
+.pending-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pending-name { font-size: .8rem; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pending-city { font-size: .7rem; color: var(--gray-500); }
+.pending-drag-hint { font-size: .7rem; color: #16a34a; white-space: nowrap; flex-shrink: 0; }
+.pending-day-btns { display: flex; align-items: center; gap: .25rem; flex-wrap: wrap; }
+.btn-xs { padding: .15rem .45rem; font-size: .72rem; border-radius: 4px; }
+.pending-dismiss {
+  margin-left: auto;
+  background: none; border: none;
+  font-size: .8rem; cursor: pointer;
+  color: var(--gray-400); padding: .15rem .3rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.pending-dismiss:hover { background: #fee2e2; color: #b91c1c; }
+
 /* ── 右側地圖 ── */
 .map-panel {
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-.map-container { width: 100%; height: 100%; }
+.map-search-bar {
+  position: absolute;
+  top: .75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  gap: .375rem;
+  width: min(380px, calc(100% - 2rem));
+}
+.map-search-input {
+  flex: 1;
+  padding: .5rem .75rem;
+  border: none;
+  border-radius: 8px;
+  font-size: .85rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  outline: none;
+}
+.map-search-input:focus { box-shadow: 0 2px 12px rgba(37,99,235,.3); }
+.map-search-btn {
+  padding: .5rem .875rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+.map-search-btn:disabled { opacity: .6; cursor: not-allowed; }
+.map-container { flex: 1; }
 .map-err {
   position: absolute;
-  top: 1rem; left: 50%;
+  top: 4rem; left: 50%;
   transform: translateX(-50%);
   background: #fff;
   border: 1px solid #fca5a5;
@@ -843,74 +945,6 @@ onUnmounted(() => {
   font-size: .875rem;
   z-index: 20;
 }
-
-/* ── 加入行程浮窗 ── */
-.add-popup {
-  position: absolute;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 30;
-  width: 320px;
-  max-width: calc(100% - 2rem);
-}
-.popup-box {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.18);
-  padding: 1rem;
-  position: relative;
-}
-.popup-close {
-  position: absolute;
-  top: .625rem; right: .625rem;
-  background: none; border: none;
-  font-size: .9rem; cursor: pointer;
-  color: var(--gray-400); width: 24px; height: 24px;
-  border-radius: 50%;
-}
-.popup-close:hover { background: var(--gray-100); color: var(--gray-700); }
-.popup-name {
-  font-size: .9rem;
-  font-weight: 600;
-  margin: 0 1.5rem 0 0;
-  line-height: 1.3;
-}
-.popup-sub {
-  font-size: .75rem;
-  color: var(--gray-500);
-  margin: .15rem 0 0;
-}
-.popup-hint {
-  font-size: .75rem;
-  color: var(--gray-500);
-  margin: .5rem 0 .375rem;
-}
-.drag-hint {
-  display: flex;
-  align-items: center;
-  gap: .25rem;
-  cursor: grab;
-}
-.popup-box {
-  cursor: default;
-}
-.popup-box[draggable="true"] {
-  cursor: grab;
-}
-.popup-box.popup-dragging {
-  opacity: .6;
-  cursor: grabbing;
-}
-.popup-days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .375rem;
-}
-
-/* ── 過場動畫 ── */
-.popup-enter-active, .popup-leave-active { transition: opacity .2s, transform .2s; }
-.popup-enter-from, .popup-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
 
 /* ── 分享 Modal ── */
 .modal-overlay {

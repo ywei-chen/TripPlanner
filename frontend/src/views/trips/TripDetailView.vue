@@ -1,5 +1,10 @@
 <template>
-  <div class="td-layout">
+  <div v-if="pageLoading" class="page-state">載入中...</div>
+  <div v-else-if="!tripsStore.currentTrip" class="page-state card">
+    <p>找不到行程或尚未登入</p>
+    <RouterLink to="/trips" class="btn btn-primary" style="margin-top:.75rem;">返回行程列表</RouterLink>
+  </div>
+  <div v-else class="td-layout">
     <!-- 左側：行程天數 -->
     <div class="left-panel">
       <div class="trip-header">
@@ -195,6 +200,7 @@ const attrMarkers = new Map<string, google.maps.Marker>()
 const itemMarkers = new Map<string, google.maps.Marker>()
 
 // ── 狀態 ──────────────────────────────────────────────────────────────────────
+const pageLoading = ref(true)
 const pendingAttr = ref<Attraction | null>(null)
 const addingDay = ref<number | null>(null)
 const emptyDays = ref<Set<number>>(new Set())
@@ -572,8 +578,12 @@ watch(() => tripsStore.currentTrip?.items, () => {
 
 // ── 生命週期 ──────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  await tripsStore.fetchById(tripId)
-  await initMap()
+  try {
+    await tripsStore.fetchById(tripId)
+    await initMap()
+  } finally {
+    pageLoading.value = false
+  }
 })
 
 onUnmounted(() => {
@@ -587,6 +597,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 3rem 1rem;
+  font-size: .9rem;
+  color: var(--gray-600);
+  text-align: center;
+}
+
 .td-layout {
   display: grid;
   grid-template-columns: 360px 1fr;

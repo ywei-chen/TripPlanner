@@ -10,6 +10,7 @@
           </p>
         </div>
         <div class="header-btns">
+          <button class="btn btn-outline btn-sm" @click="openShare">分享</button>
           <RouterLink :to="`/trips/${tripId}/edit`" class="btn btn-outline btn-sm">編輯</RouterLink>
           <button class="btn btn-danger btn-sm" @click="handleDelete">刪除</button>
         </div>
@@ -113,6 +114,46 @@
       </Transition>
     </div>
   </div>
+
+  <!-- 分享 Modal -->
+  <Teleport to="body">
+    <div v-if="showShare" class="modal-overlay" @click.self="showShare = false">
+      <div class="share-modal">
+        <div class="share-modal-header">
+          <h3>分享行程</h3>
+          <button class="modal-close" @click="showShare = false">✕</button>
+        </div>
+
+        <div class="share-modal-body">
+          <!-- 現有的分享連結 -->
+          <div v-if="shareLinks.length > 0" class="share-links-list">
+            <p class="share-section-label">現有分享連結</p>
+            <div v-for="link in shareLinks" :key="link.id" class="share-link-row">
+              <div class="share-link-info">
+                <input :value="link.shareUrl" readonly class="share-url-input" @focus="($event.target as HTMLInputElement).select()" />
+                <span class="share-meta">{{ link.viewCount }} 次查看</span>
+              </div>
+              <div class="share-link-actions">
+                <button class="btn btn-sm btn-outline" @click="copyLink(link.shareUrl)">複製</button>
+                <button class="btn btn-sm btn-danger" @click="deactivateLink(link.id)">停用</button>
+              </div>
+            </div>
+          </div>
+          <p v-else class="share-empty">尚未建立任何分享連結</p>
+
+          <!-- 建立新連結 -->
+          <div class="share-create">
+            <p class="share-section-label">建立新連結</p>
+            <button class="btn btn-primary" :disabled="creatingLink" @click="createLink">
+              {{ creatingLink ? '建立中...' : '+ 建立分享連結' }}
+            </button>
+          </div>
+
+          <p v-if="copyMsg" class="copy-msg">{{ copyMsg }}</p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -120,8 +161,10 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useTripsStore } from '@/stores/trips.store'
 import { useAttractionsStore } from '@/stores/attractions.store'
+import { shareService } from '@/services/share.service'
 import type { TripItem } from '@/types/trip.types'
 import type { Attraction } from '@/types/attraction.types'
+import type { ShareLink } from '@/types/share.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -190,6 +233,38 @@ function getDayDate(dayNumber: number): string {
 
 function addEmptyDay() {
   emptyDays.value = new Set([...emptyDays.value, maxDay.value + 1])
+}
+
+// ── 分享 ──────────────────────────────────────────────────────────────────────
+const showShare = ref(false)
+const shareLinks = ref<ShareLink[]>([])
+const creatingLink = ref(false)
+const copyMsg = ref('')
+
+async function openShare() {
+  showShare.value = true
+  shareLinks.value = await shareService.getLinks(tripId)
+}
+
+async function createLink() {
+  creatingLink.value = true
+  try {
+    const link = await shareService.create(tripId)
+    shareLinks.value.unshift(link)
+  } finally {
+    creatingLink.value = false
+  }
+}
+
+async function deactivateLink(linkId: string) {
+  await shareService.deactivate(linkId)
+  shareLinks.value = shareLinks.value.filter(l => l.id !== linkId)
+}
+
+function copyLink(url: string) {
+  navigator.clipboard.writeText(url)
+  copyMsg.value = '已複製連結！'
+  setTimeout(() => { copyMsg.value = '' }, 2000)
 }
 
 // ── 刪除行程 ──────────────────────────────────────────────────────────────────
@@ -730,6 +805,92 @@ onUnmounted(() => {
 /* ── 過場動畫 ── */
 .popup-enter-active, .popup-leave-active { transition: opacity .2s, transform .2s; }
 .popup-enter-from, .popup-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
+
+/* ── 分享 Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.share-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  overflow: hidden;
+}
+.share-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+.share-modal-header h3 { margin: 0; font-size: 1rem; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: .9rem;
+  cursor: pointer;
+  color: var(--gray-400);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
+.share-modal-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.share-section-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 0 0 .5rem;
+}
+.share-links-list { display: flex; flex-direction: column; gap: .625rem; }
+.share-link-row {
+  display: flex;
+  flex-direction: column;
+  gap: .375rem;
+  padding: .625rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+}
+.share-link-info { display: flex; align-items: center; gap: .5rem; }
+.share-url-input {
+  flex: 1;
+  font-size: .8rem;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  padding: .25rem .5rem;
+  background: var(--gray-50);
+  cursor: text;
+  min-width: 0;
+}
+.share-meta { font-size: .75rem; color: var(--gray-400); white-space: nowrap; }
+.share-link-actions { display: flex; gap: .375rem; }
+.share-empty { font-size: .875rem; color: var(--gray-500); margin: 0; }
+.share-create { display: flex; flex-direction: column; }
+.copy-msg {
+  font-size: .8rem;
+  color: #16a34a;
+  text-align: center;
+  margin: 0;
+}
 
 /* ── RWD ── */
 @media (max-width: 900px) {

@@ -17,6 +17,7 @@ public record UpdateTripRequest(
 public record AddTripItemRequest(
     Guid? AttractionId,
     int DayNumber,
+    int SortOrder,
     string? CustomName,
     string? Notes,
     TimeOnly? StartTime,

@@ -45,6 +45,7 @@ export interface UpdateTripRequest {
 export interface AddTripItemRequest {
   attractionId?: string
   dayNumber: number
+  sortOrder: number
   customName?: string
   notes?: string
   startTime?: string

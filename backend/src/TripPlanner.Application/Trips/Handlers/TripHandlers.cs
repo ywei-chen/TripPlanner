@@ -81,6 +81,7 @@ public class TripService(ITripRepository repo, ICurrentUserService currentUser)
             TripId = tripId,
             AttractionId = req.AttractionId,
             DayNumber = req.DayNumber,
+            SortOrder = req.SortOrder,
             CustomName = req.CustomName,
             Notes = req.Notes,
             StartTime = req.StartTime,

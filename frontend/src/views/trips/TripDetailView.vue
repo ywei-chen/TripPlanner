@@ -580,10 +580,12 @@ watch(() => tripsStore.currentTrip?.items, () => {
 onMounted(async () => {
   try {
     await tripsStore.fetchById(tripId)
-    await initMap()
   } finally {
     pageLoading.value = false
   }
+  if (!tripsStore.currentTrip) return
+  await nextTick() // 等 v-else 的 DOM（含 map-container）出現後再初始化地圖
+  await initMap()
 })
 
 onUnmounted(() => {

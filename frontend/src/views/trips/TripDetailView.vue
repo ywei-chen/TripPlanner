@@ -4,7 +4,13 @@
     <p>找不到行程或尚未登入</p>
     <RouterLink to="/trips" class="btn btn-primary" style="margin-top:.75rem;">返回行程列表</RouterLink>
   </div>
-  <div v-else class="td-layout">
+  <div v-else class="td-root">
+    <!-- Mobile tab switcher (hidden on desktop) -->
+    <div class="mobile-tab-bar">
+      <button :class="['mobile-tab', { active: mobileTab === 'list' }]" @click="mobileTab = 'list'">行程安排</button>
+      <button :class="['mobile-tab', { active: mobileTab === 'map' }]" @click="mobileTab = 'map'">地圖</button>
+    </div>
+    <div class="td-layout" :data-tab="mobileTab">
 
     <!-- ── 左側 ── -->
     <div class="left-panel">
@@ -159,6 +165,7 @@
       <div ref="mapEl" class="map-container" />
     </div>
   </div>
+  </div>
 
   <!-- 分享 Modal -->
   <Teleport to="body">
@@ -237,6 +244,7 @@ const showRoute = ref(true)
 
 // ── 狀態 ──────────────────────────────────────────────────────────────────────
 const pageLoading = ref(true)
+const mobileTab = ref<'list' | 'map'>('list')
 const savedPlaces = ref<SavedPlace[]>([])
 const addingDay = ref<number | null>(null)
 const emptyDays = ref<Set<number>>(new Set())
@@ -796,6 +804,12 @@ onUnmounted(() => {
   flex: 1; padding: 3rem 1rem; font-size: .9rem; color: var(--gray-500); text-align: center;
 }
 
+/* ── td-root：填滿 main-full 的剩餘高度 ── */
+.td-root { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ── Mobile tab bar（桌機隱藏）── */
+.mobile-tab-bar { display: none; }
+
 .td-layout { display: grid; grid-template-columns: 390px 1fr; flex: 1; overflow: hidden; }
 
 /* ── 左側 ── */
@@ -1058,8 +1072,41 @@ onUnmounted(() => {
 
 /* ── RWD ── */
 @media (max-width: 900px) {
-  .td-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; overflow: auto; }
-  .left-panel { border-right: none; border-bottom: 1px solid var(--gray-200); max-height: 60vh; }
-  .map-panel { height: 40vh; min-height: 280px; }
+  /* Tab bar */
+  .mobile-tab-bar {
+    display: flex; flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .mobile-tab {
+    flex: 1; padding: .75rem;
+    font-size: .875rem; font-weight: 600; color: var(--gray-500);
+    background: none; border: none;
+    border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+    cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .mobile-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  /* Layout: switch from grid to flex so tab panels fill height properly */
+  .td-layout {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden;
+  }
+
+  /* Show/hide panels by active tab */
+  .td-layout[data-tab="list"] .left-panel { display: flex; flex: 1; overflow: hidden; }
+  .td-layout[data-tab="list"] .map-panel  { display: none; }
+  .td-layout[data-tab="map"]  .left-panel { display: none; }
+  .td-layout[data-tab="map"]  .map-panel  { display: flex; flex: 1; overflow: hidden; }
+
+  .left-panel { border-right: none; }
+
+  /* Search bar: full width on mobile */
+  .map-search-bar { width: calc(100% - 1.5rem); }
+}
+
+@media (max-width: 640px) {
+  .trip-header { flex-direction: column; align-items: flex-start; }
+  .header-btns { flex-wrap: wrap; }
+  .saved-day-btns { flex-wrap: wrap; }
 }
 </style>

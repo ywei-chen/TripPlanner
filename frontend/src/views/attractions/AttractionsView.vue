@@ -1,5 +1,10 @@
 <template>
-  <div class="attractions-layout">
+  <div class="attractions-root">
+    <div class="mobile-tab-bar">
+      <button :class="['mobile-tab', { active: mobileTab === 'list' }]" @click="mobileTab = 'list'">探索景點</button>
+      <button :class="['mobile-tab', { active: mobileTab === 'map' }]" @click="mobileTab = 'map'">地圖</button>
+    </div>
+  <div class="attractions-layout" :data-tab="mobileTab">
     <!-- 左側：搜尋 + 景點列表 -->
     <div class="list-panel">
       <div class="search-bar">
@@ -92,6 +97,7 @@
       <div ref="mapEl" class="map-container" />
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -103,6 +109,7 @@ import type { Attraction } from '@/types/attraction.types'
 const store = useAttractionsStore()
 const auth = useAuthStore()
 
+const mobileTab = ref<'list' | 'map'>('list')
 const mapEl = ref<HTMLElement | null>(null)
 const params = reactive({ q: '', city: '', category: '', page: 1, pageSize: 20 })
 const selectedId = ref<string | null>(null)
@@ -288,6 +295,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.attractions-root { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* Mobile tab bar（桌機隱藏）*/
+.mobile-tab-bar { display: none; }
+
 .attractions-layout {
   display: grid;
   grid-template-columns: 400px 1fr;
@@ -478,21 +490,32 @@ onUnmounted(() => {
 
 /* ── RWD ── */
 @media (max-width: 900px) {
-  .attractions-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-    overflow: auto;
-  }
-  .list-panel {
-    border-right: none;
+  .mobile-tab-bar {
+    display: flex; flex-shrink: 0;
+    background: var(--surface);
     border-bottom: 1px solid var(--gray-200);
-    max-height: 55vh;
   }
-  .map-panel { height: 45vh; min-height: 280px; }
+  .mobile-tab {
+    flex: 1; padding: .75rem;
+    font-size: .875rem; font-weight: 600; color: var(--gray-500);
+    background: none; border: none;
+    border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+    cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .mobile-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  .attractions-layout {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden;
+  }
+
+  .attractions-layout[data-tab="list"] .list-panel { display: flex; flex: 1; overflow: hidden; }
+  .attractions-layout[data-tab="list"] .map-panel  { display: none; }
+  .attractions-layout[data-tab="map"]  .list-panel { display: none; }
+  .attractions-layout[data-tab="map"]  .map-panel  { display: flex; flex: 1; overflow: hidden; }
+
+  .list-panel { border-right: none; }
 }
 @media (max-width: 640px) {
   .filters { flex-wrap: wrap; }
-  .list-panel { max-height: 50vh; }
-  .map-panel { height: 40vh; }
 }
 </style>

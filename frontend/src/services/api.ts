@@ -2,7 +2,7 @@ import axios from 'axios'
 import { tokenManager } from '@/utils/tokenManager'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -39,7 +39,7 @@ api.interceptors.response.use(
       const refreshToken = tokenManager.getRefreshToken()
       if (!refreshToken) throw new Error('No refresh token')
 
-      const { data } = await axios.post('/api/auth/refresh', { refreshToken })
+      const { data } = await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, { refreshToken })
       tokenManager.setTokens(data.accessToken, data.refreshToken)
 
       refreshQueue.forEach(cb => cb(data.accessToken))

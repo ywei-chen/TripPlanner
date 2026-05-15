@@ -23,10 +23,17 @@ public static class ServiceCollectionExtensions
             opts.UseNpgsql(config.GetConnectionString("DefaultConnection"))
                 .UseSnakeCaseNamingConvention());
 
-        services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(config.GetConnectionString("Redis")!));
-
-        services.AddScoped<ICacheService, RedisCacheService>();
+        var redisConn = config.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
+            services.AddScoped<ICacheService, RedisCacheService>();
+        }
+        else
+        {
+            services.AddMemoryCache();
+            services.AddScoped<ICacheService, MemoryCacheService>();
+        }
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddHttpContextAccessor();

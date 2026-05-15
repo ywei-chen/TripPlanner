@@ -720,9 +720,12 @@ async function initMap() {
       center: { lat: 23.5, lng: 121 },
       zoom: 7,
       mapTypeControl: false,
-      fullscreenControl: true,
+      fullscreenControl: false,
       streetViewControl: false,
       zoomControl: true,
+      zoomControlOptions: {
+        position: google.maps.ControlPosition.RIGHT_BOTTOM,
+      },
     })
 
     // 偵測 Google Maps POI 點擊（餐廳、景點、地標等）
@@ -1017,12 +1020,12 @@ onUnmounted(() => {
 
 .route-toggle-btn {
   position: absolute; top: .875rem; right: .875rem; z-index: 20;
-  background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+  background: rgba(255,255,255,.97);
   border: 1px solid var(--gray-200); border-radius: 10px;
   padding: .4rem .875rem; font-size: .78rem; font-weight: 600; color: var(--gray-700);
   cursor: pointer; box-shadow: 0 2px 8px rgba(80,45,10,.15); transition: all .12s;
 }
-.route-toggle-btn:hover { background: var(--surface); color: var(--gray-900); box-shadow: 0 3px 12px rgba(80,45,10,.2); }
+.route-toggle-btn:hover { background: #fff; color: var(--gray-900); box-shadow: 0 3px 12px rgba(80,45,10,.2); }
 
 .map-err {
   position: absolute; top: 4rem; left: 50%; transform: translateX(-50%);
@@ -1102,6 +1105,9 @@ onUnmounted(() => {
 
   /* Search bar: full width on mobile */
   .map-search-bar { width: calc(100% - 1.5rem); }
+
+  /* Route toggle: move below search bar to avoid overlap */
+  .route-toggle-btn { top: 4.25rem; right: .75rem; }
 }
 
 @media (max-width: 640px) {

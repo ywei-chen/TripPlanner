@@ -1,7 +1,11 @@
 <template>
   <div class="auth-page">
     <div class="card auth-card">
-      <h2>登入</h2>
+      <div class="auth-brand">
+        <div class="auth-brand-logo">TripPlanner</div>
+        <p>規劃屬於你的完美旅程</p>
+      </div>
+      <h2>登入帳號</h2>
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label class="form-label">Email</label>
@@ -77,14 +81,48 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-.auth-page { display: flex; justify-content: center; padding: 3rem 1rem; }
-.auth-card { width: 100%; max-width: 420px; }
-.auth-card h2 { margin-bottom: 1.5rem; }
-.w-full { width: 100%; justify-content: center; }
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 2.25rem 2rem;
+  border-radius: var(--radius-xl);
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.auth-brand-logo {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -.03em;
+  line-height: 1;
+  margin-bottom: .375rem;
+}
+.auth-brand p { font-size: .875rem; color: var(--gray-500); }
+
+.auth-card h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.w-full { width: 100%; }
 
 .error-box {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: rgba(248,113,113,.08);
+  border: 1px solid rgba(248,113,113,.28);
   border-radius: var(--radius);
   padding: .625rem .875rem;
   margin-bottom: 1rem;
@@ -95,21 +133,22 @@ async function handleSubmit() {
 .error-box p { color: var(--danger); font-size: .875rem; margin: 0; }
 
 .warn-box {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: rgba(232,160,69,.08);
+  border: 1px solid rgba(232,160,69,.28);
   border-radius: var(--radius);
   padding: .625rem .875rem;
   margin-bottom: 1rem;
   font-size: .875rem;
-  color: #92400e;
+  color: var(--primary);
   line-height: 1.5;
 }
 .warn-box code {
-  background: rgba(0,0,0,.08);
+  background: rgba(255,180,80,.12);
   padding: .1rem .35rem;
   border-radius: 4px;
   font-size: .8125rem;
 }
 
-.switch-link { margin-top: 1rem; font-size: .875rem; text-align: center; }
+.switch-link { margin-top: 1.25rem; font-size: .875rem; text-align: center; color: var(--gray-500); }
+.switch-link a { font-weight: 600; color: var(--primary); }
 </style>

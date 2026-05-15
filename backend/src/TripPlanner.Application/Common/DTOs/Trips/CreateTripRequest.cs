@@ -21,7 +21,9 @@ public record AddTripItemRequest(
     string? CustomName,
     string? Notes,
     TimeOnly? StartTime,
-    int? DurationMins);
+    int? DurationMins,
+    decimal? CustomLatitude,
+    decimal? CustomLongitude);
 
 public record ReorderTripItemsRequest(List<TripItemOrderDto> Items);
 public record TripItemOrderDto(Guid ItemId, int DayNumber, int SortOrder);

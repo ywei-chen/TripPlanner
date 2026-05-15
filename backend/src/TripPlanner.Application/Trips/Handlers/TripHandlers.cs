@@ -85,7 +85,9 @@ public class TripService(ITripRepository repo, ICurrentUserService currentUser)
             CustomName = req.CustomName,
             Notes = req.Notes,
             StartTime = req.StartTime,
-            DurationMins = req.DurationMins
+            DurationMins = req.DurationMins,
+            CustomLatitude = req.CustomLatitude,
+            CustomLongitude = req.CustomLongitude
         };
         await repo.AddItemAsync(item);
         await repo.SaveChangesAsync();
@@ -135,5 +137,6 @@ public class TripService(ITripRepository repo, ICurrentUserService currentUser)
         i.Attraction?.CoverImage,
         i.DayNumber, i.SortOrder,
         i.CustomName, i.Notes, i.StartTime, i.DurationMins,
-        i.Attraction?.Latitude, i.Attraction?.Longitude);
+        i.Attraction?.Latitude ?? i.CustomLatitude,
+        i.Attraction?.Longitude ?? i.CustomLongitude);
 }

@@ -11,6 +11,8 @@ public class TripItem
     public string? Notes { get; set; }
     public TimeOnly? StartTime { get; set; }
     public int? DurationMins { get; set; }
+    public decimal? CustomLatitude { get; set; }
+    public decimal? CustomLongitude { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Trip Trip { get; set; } = null!;

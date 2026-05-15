@@ -301,7 +301,7 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid var(--gray-200);
-  background: #fff;
+  background: var(--surface);
 }
 
 .search-bar {
@@ -310,7 +310,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: .5rem;
-  background: #fff;
+  background: var(--surface);
   flex-shrink: 0;
 }
 .filters {
@@ -333,10 +333,11 @@ onUnmounted(() => {
 }
 .geocoding-badge {
   font-size: .75rem;
-  background: #eff6ff;
+  background: var(--primary-muted);
   color: var(--primary);
   padding: .1rem .45rem;
   border-radius: 999px;
+  border: 1px solid var(--primary-border);
 }
 
 .loading-state {
@@ -377,21 +378,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   height: 90px;
-  background: #fff;
+  background: var(--surface-0);
   border-radius: var(--radius);
   border: 2px solid transparent;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  box-shadow: var(--shadow-xs);
   overflow: hidden;
   cursor: pointer;
   transition: border-color .12s, box-shadow .12s;
 }
 .attraction-card:hover {
-  border-color: var(--gray-200);
-  box-shadow: 0 2px 6px rgba(0,0,0,.1);
+  border-color: var(--surface-3);
+  box-shadow: var(--shadow-sm);
 }
 .attraction-card.active {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+  box-shadow: 0 0 0 3px var(--primary-muted);
 }
 
 .cover {
@@ -427,7 +428,7 @@ onUnmounted(() => {
   font-size: 1rem; cursor: pointer;
   color: var(--gray-200); flex-shrink: 0; padding: 0;
 }
-.fav-btn.active { color: #e11d48; }
+.fav-btn.active { color: var(--danger); }
 
 .tags { display: flex; gap: .2rem; flex-wrap: wrap; }
 .tags .badge { font-size: .7rem; }

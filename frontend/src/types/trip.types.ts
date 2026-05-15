@@ -50,6 +50,8 @@ export interface AddTripItemRequest {
   notes?: string
   startTime?: string
   durationMins?: number
+  customLatitude?: number
+  customLongitude?: number
 }
 
 export interface ReorderItemsRequest {

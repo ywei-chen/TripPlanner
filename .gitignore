@@ -34,3 +34,6 @@ desktop.ini
 
 # Claude
 frontend/.claude/
+
+# Local secrets (never commit real credentials)
+**/appsettings.Development.json
